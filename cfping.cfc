@@ -1,12 +1,7 @@
 <cfcomponent output="false">
 	<cfscript>
-		function init(){
-			var variables = structNew();
-			variables.os = getOS();
-			
-			return variables;
-		}
-		
+		os = getOS();
+
 		public function checkServer(server){
 			var ping = ping(ARGUMENTS.server);
 			var httpReq = httpReq(ARGUMENTS.server);
@@ -20,11 +15,12 @@
 		}
 	</cfscript>
 
-	<cffunction name="ping" access="private" output="false" returntype="string">
+	<cffunction name="ping" access="private" output="false" returntype="any">
 		<cfargument name="server" type="string" required="true" />
 		<cfset var status = 'offline' />
-		<cfset var pingReturn = '' />
+		<cfset var pingObj = '' />
 		<cfset var pingAttr = structNew() />
+		<cfset var lossAmt = '' />
 				
 		<cfset pingAttr.arguments = ARGUMENTS.server />
 		<cfscript>
@@ -40,14 +36,20 @@
 			}
 		</cfscript>
 		
-		<cfexecute attributeCollection="#pingAttr#" timeout="60" variable="pingReturn" />
+		<cfexecute attributeCollection="#pingAttr#" timeout="60" variable="pingObj" />
 		
-		<cfset status = pingHandler(pingReturn) />
-				
+		<cfscript>
+			// Mac regex need to find 'packet loss'
+			lossAmt = REmatchNoCase('[0-9]{1,3}%( packet| {0}) loss',pingObj)[1];
+			lossAmt = REmatchNoCase('[0-9]{1,3}',lossAmt)[1];
+			
+			if(lossAmt EQ 0)status = 'online';
+		</cfscript>
+		
 		<cfreturn status />
 	</cffunction>
 	
-	<cffunction name="httpReq" access="private" output="false" returntype="string">
+	<cffunction name="httpReq" access="private" output="false" returntype="any">
 		<cfargument name="server" type="string" required="true" />
 		<cfset var status='online' />
 		
@@ -55,17 +57,6 @@
 	</cffunction>
 	
 	<cfscript>
-		private function pingHandler(pingObj){
-			var status = 'online';
-			var lossAmt = '0';
-			
-			var lossAmt = REfindNoCase('[0-9]{1,3}% packet loss',pingObj);
-			lossAmt = REfindNoCase('[0-9]{1,3}',lossAmt);
-			
-			if(lossAmt LT 100)status = 'offline ' & lossAmt & '% loss';
-			return status;
-		}
-		
 		public function getOS(){
 			var os = '';
 			

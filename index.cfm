@@ -1,7 +1,7 @@
 <cfscript>
-	cfping = createObject('component','cfping').init();
-	status = cfping.checkServer('www.cagedata.com');
-	writeOutput(status);
+	cfping = createObject('component','cfping');
+	status = cfping.checkServer('trogdorsrv01');
+	//writeOutput(status);
 </cfscript>
 
-<cfdump var="#SERVER#" />
+<cfdump var="#status#" />
