@@ -1,57 +1,79 @@
 <cfcomponent output="false">
-	<cffunction name="init" output="false">
+	<cfscript>
+		function init(){
+			var variables = structNew();
+			variables.os = getOS();
+			
+			return variables;
+		}
+		
+		public function checkServer(server){
+			var ping = ping(ARGUMENTS.server);
+			var httpReq = httpReq(ARGUMENTS.server);
+			var status = 'online';
+			
+			if((ping EQ 'online') AND (httpReq EQ 'online'))status = 'online';
+			else if((ping EQ 'online' AND httpReq EQ 'offline') OR (httpReq EQ 'online' AND ping EQ 'offline'))status = 'offline';
+			else if((ping EQ 'offline') AND (httpReq EQ 'offline'))status = 'offline';
+			
+			return status;
+		}
+	</cfscript>
 
-	</cffunction>
-	
-	<cffunction name="checkServer" access="public" output="false">
-		<cfargument name="server" type="string" required="true" />
-		
-		<cfset ping = ping(ARGUMENTS.server) />
-		<cfset httpReq = httpReq(ARGUMENTS.server) />
-		
-		<cfif (ping EQ 'online') AND (httpReq EQ 'online')>
-			<cfset status = 'online' />
-		<cfelseif (ping EQ 'online' AND httpReq EQ 'offline') OR (httpReq EQ 'online' AND ping EQ 'offline')>
-			<cfset status = 'unsure' />
-		<cfelseif (ping EQ 'offline') AND (httpReq EQ 'offline')>
-			<cfset status = 'offline' />
-		<cfelse>
-			<cfset status = 'unsure' />
-		</cfif>
-		
-		<cfreturn status />
-	</cffunction>
-	
 	<cffunction name="ping" access="private" output="false" returntype="string">
 		<cfargument name="server" type="string" required="true" />
-		<cfset var status = "offline" />
-		<cfset var pingReturn = "" />
-		<cfset var pingAttr = ARGUMENTS.server />
-		
-		<cfset pingAttr = pingAttr & " -n 1" />
-		<cftry>
-			<cfexecute name="ping.exe" timeout="60" arguments="#pingAttr#" variable="pingReturn" />
-		<cfcatch>
-			<cfthrow message="ping process timed out" />
-		</cfcatch>
-		</cftry>
-		
+		<cfset var status = 'offline' />
+		<cfset var pingReturn = '' />
+		<cfset var pingAttr = structNew() />
+				
+		<cfset pingAttr.arguments = ARGUMENTS.server />
 		<cfscript>
-			if(find('Request timed out',pingReturn)){
-				status = "offline";
-			}else{
-				status = "online";
+			switch(variables.os){
+				case 'windows':
+					pingAttr.name = 'ping.exe';
+					pingAttr.arguments = pingAttr.arguments & ' -n 1';
+				break;
+				case 'mac,linux':
+					pingAttr.name = 'ping';
+					pingAttr.arguments = '-c 1 ' & pingAttr.arguments;
+				break;
 			}
 		</cfscript>
-
 		
+		<cfexecute attributeCollection="#pingAttr#" timeout="60" variable="pingReturn" />
+		
+		<cfset status = pingHandler(pingReturn) />
+				
 		<cfreturn status />
 	</cffunction>
 	
 	<cffunction name="httpReq" access="private" output="false" returntype="string">
 		<cfargument name="server" type="string" required="true" />
-		<cfset var status="online" />
+		<cfset var status='online' />
 		
 		<cfreturn status />
 	</cffunction>
+	
+	<cfscript>
+		private function pingHandler(pingObj){
+			var status = 'online';
+			var lossAmt = '0';
+			
+			var lossAmt = REfindNoCase('[0-9]{1,3}% packet loss',pingObj);
+			lossAmt = REfindNoCase('[0-9]{1,3}',lossAmt);
+			
+			if(lossAmt LT 100)status = 'offline ' & lossAmt & '% loss';
+			return status;
+		}
+		
+		public function getOS(){
+			var os = '';
+			
+			if(find('Windows',SERVER.OS.name))os = 'windows';
+			else if(find('Mac',SERVER.OS.name))os ='mac';
+			else if(find('Linux',SERVER.OS.name))os = 'linux';
+			
+			return os;
+		}
+	</cfscript>
 </cfcomponent>
