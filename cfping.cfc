@@ -40,7 +40,7 @@
 		
 		<cfscript>
 			// Mac regex need to find 'packet loss'
-			lossAmt = REmatchNoCase('[0-9]{1,3}%( packet| {0}) loss',pingObj)[1];
+			lossAmt = REmatchNoCase('([0-9]{1,3})*((.|,)\d)%( packet| {0}) loss',pingObj)[1];
 			lossAmt = REmatchNoCase('[0-9]{1,3}',lossAmt)[1];
 			
 			if(lossAmt EQ 0)status = 'online';
